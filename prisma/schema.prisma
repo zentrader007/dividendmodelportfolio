@@ -1,0 +1,275 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Auth (NextAuth) ───────────────────────────────────────
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  password      String?
+  image         String?
+  role          String    @default("user")
+  accounts      Account[]
+  sessions      Session[]
+  subscription  Subscription?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// ─── Subscriptions (Square) ────────────────────────────────
+
+model Subscription {
+  id                   String    @id @default(cuid())
+  userId               String    @unique
+  squareCustomerId     String?
+  squareSubscriptionId String?
+  status               String    @default("inactive")
+  plan                 String?
+  currentPeriodStart   DateTime?
+  currentPeriodEnd     DateTime?
+  user                 User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+}
+
+// ─── Model Portfolio Securities ────────────────────────────
+
+model Security {
+  id               String   @id @default(cuid())
+  ticker           String   @unique
+  name             String
+  description      String?
+  divFreq          String?
+  risk             String?
+  issuesK1         Boolean  @default(false)
+  suggestedAlloc   Float?
+  maxAlloc         Float?
+  buyUnder         Float?
+  buyUnderText     String?
+  alertDate        DateTime?
+  alertPrice       Float?
+  articleLink      String?
+  sector           String?
+  portfolioSection String?
+  sortOrder        Int      @default(0)
+  jan1Price        Float?
+  notes            String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  dividendData     DividendData?
+  priceCache       PriceCache?
+}
+
+model PriceCache {
+  id          String   @id @default(cuid())
+  ticker      String   @unique
+  price       Float?
+  dailyChange Float?
+  fetchedAt   DateTime @default(now())
+  security    Security? @relation(fields: [ticker], references: [ticker], onDelete: Cascade)
+}
+
+model DividendData {
+  id             String    @id @default(cuid())
+  ticker         String    @unique
+  annualDiv      Float?
+  earnedYtd      Float?
+  earnedTotal    Float?
+  lastExDivDate  DateTime?
+  lastDivAmount  Float?
+  payDate        DateTime?
+  divFreq        String?
+  security       Security? @relation(fields: [ticker], references: [ticker], onDelete: Cascade)
+}
+
+// ─── Preferred Stocks ──────────────────────────────────────
+
+model Preferred {
+  id            String    @id @default(cuid())
+  ticker        String    @unique
+  name          String
+  couponRate    Float?
+  callDate      DateTime?
+  maturityDate  DateTime?
+  creditRating  String?
+  divFreq       String?
+  risk          String?
+  buyUnder      Float?
+  alertDate     DateTime?
+  alertPrice    Float?
+  articleLink   String?
+  qdi           String?
+  k1            String?
+  jan1Price     Float?
+  notes         String?
+  category      String?
+  sortOrder     Int       @default(0)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+// ─── Bonds ─────────────────────────────────────────────────
+
+model Bond {
+  id              String    @id @default(cuid())
+  cusip           String    @unique
+  name            String
+  coupon          Float?
+  creditRating    String?
+  suggestedAlloc  Float?
+  callableDate    DateTime?
+  callableText    String?
+  maturityDate    DateTime?
+  buyUnder        Float?
+  nextPayment     DateTime?
+  sector          String?
+  risk            String?
+  prospectusLink  String?
+  articleLink     String?
+  sortOrder       Int       @default(0)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+
+// ─── Dividend Events (Tracker) ─────────────────────────────
+
+model DividendEvent {
+  id              String    @id @default(cuid())
+  ticker          String
+  eventType       String
+  exDivDate       DateTime?
+  amount          Float?
+  payDate         DateTime?
+  declarationDate DateTime?
+  createdAt       DateTime  @default(now())
+
+  @@index([ticker])
+  @@index([eventType])
+}
+
+model BabyBondDiv {
+  id          String  @id @default(cuid())
+  ticker      String  @unique
+  name        String
+  divFreq     String?
+  coupon      Float?
+  annualDiv   Float?
+  periodDiv   Float?
+  exDivDate   String?
+  exDivMonths String?
+  payDate     String?
+  payMonths   String?
+  webLink     String?
+}
+
+// ─── Sold Securities ───────────────────────────────────────
+
+model SoldSecurity {
+  id             String    @id @default(cuid())
+  ticker         String
+  name           String?
+  description    String?
+  section        String?
+  buyAlertDate   DateTime?
+  buyArticle     String?
+  buyAlertPrice  Float?
+  lastBuyUnder   Float?
+  sellAlertPrice Float?
+  sellAlertDate  DateTime?
+  sellArticle    String?
+  ytdGain        Float?
+  totalGain      Float?
+  status         String?
+  year           Int
+
+  @@index([year])
+  @@index([ticker])
+}
+
+// ─── Earnings Calendar ─────────────────────────────────────
+
+model EarningsEvent {
+  id         String    @id @default(cuid())
+  ticker     String
+  reportDate DateTime?
+  timing     String?
+  notes      String?
+  fiscalNote String?
+
+  @@index([ticker])
+}
+
+// ─── Tax Info ──────────────────────────────────────────────
+
+model TaxInfo {
+  id                 String  @id @default(cuid())
+  ticker             String
+  name               String?
+  taxClass           String?
+  year               Int
+  ordinaryIncome     Float?
+  sec199aDeduction   Float?
+  qualifiedDividends Float?
+  ltcg               Float?
+  returnOfCapital    Float?
+  companyLink        String?
+
+  @@unique([ticker, year])
+  @@index([taxClass])
+}
+
+// ─── Update Log ────────────────────────────────────────────
+
+model UpdateLog {
+  id         String    @id @default(cuid())
+  revNumber  String?
+  date       DateTime?
+  ticker     String?
+  changeType String?
+  note       String?
+  isDesign   Boolean   @default(false)
+  createdAt  DateTime  @default(now())
+}
