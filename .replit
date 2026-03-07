@@ -1,0 +1,21 @@
+run = "npm run dev"
+entrypoint = "src/app/page.tsx"
+
+[nix]
+channel = "stable-24_05"
+
+[env]
+PATH = "/home/runner/$REPL_SLUG/node_modules/.bin:$PATH"
+
+[[ports]]
+localPort = 3000
+externalPort = 80
+
+[deployment]
+run = ["npm", "run", "start"]
+build = ["sh", "-c", "npm install && npx prisma generate && npm run build"]
+
+[languages.typescript]
+pattern = "**/{*.ts,*.tsx}"
+[languages.typescript.languageServer]
+start = "typescript-language-server --stdio"
